@@ -1,0 +1,134 @@
+# config/config.yaml
+
+# --- File Paths ---
+data_paths:
+  raw_data_dir: data/raw/
+  price_file_pattern: NQ*.txt
+  trade_log_file: orb_trades.csv # VERIFY THIS FILENAME!
+  processed_dir: data/processed/
+  models_dir: models/
+  results_dir: results/
+
+processed_files:
+  price_data: price_data_processed.parquet
+  features_labels: features_and_labels.parquet
+
+model_files:
+  regime_model: regime_model.joblib
+  regime_scaler: regime_scaler.joblib
+  meta_model: meta_labeling_model.joblib
+  meta_scaler: meta_labeling_scaler.joblib
+
+# --- Data Splitting (Chronological) ---
+data_split:
+  train_start: '2015-01-01'
+  train_end: '2020-12-31'
+  validation_end: '2022-12-31'
+
+# --- ORB Strategy Parameters ---
+strategy_params:
+  openingRangeStartTime: 830
+  openingRangeEndTime: 845
+  cutoffTime: 945
+  marketCloseTime: 1500
+  riskRewardRatio: 2.5
+  basePositionSize: 1
+  rsiPeriod: 7
+  fastSMAPeriod: 15
+  slowSMAPeriod: 20
+  useRSIFilter: false
+  useSMACrossFilter: true
+  useVolumeFilter: true
+  volumeThreshold: 1.5
+  volumeAvgPeriod: 20
+
+# --- Feature Engineering ---
+feature_params:
+  atr_period: 14
+  atr_long_period: 50
+  rsi_period: 7
+  sma_fast_period: 15
+  sma_slow_period: 20
+  volatility_period: 20
+  volume_sma_period: 20
+  roc_period: 10
+  adx_period: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+
+# --- Regime Model ---
+regime_model_params:
+  n_regimes: 3
+  # Features for clustering (Lagged). Keep simple or experiment later.
+  features: ['Volatility_20_lag1', 'ATR_14_lag1']
+
+# --- Hyperparameter Tuning (NEW) ---
+hyperparameter_tuning:
+  enabled: true             # Set to false to skip HPT and use defaults
+  n_trials: 50             # Number of Optuna trials (e.g., 50-100)
+  cv_splits: 5              # Number of TimeSeriesSplit folds
+  early_stopping_rounds: 20 # Early stopping within each CV fold fit
+  direction: 'maximize'     # Optimize for higher AUC
+  metric: 'auc'             # Metric to optimize (auc recommended for imbalance)
+
+# --- Meta Labeling Model ---
+meta_model_params:
+  # Features used for prediction (Lagged). Includes new interaction features.
+  features:
+    # Base Indicators
+    - 'ATR_14_lag1'
+    - 'RSI_7_lag1'
+    - 'SMA_15_lag1'
+    - 'SMA_20_lag1'
+    - 'Volume_SMA_20_lag1'
+    - 'Volatility_20_lag1'
+    - 'ROC_10_lag1'
+    - 'ADX_14_lag1'
+    # CORRECTED Lagged MACD Names (Double Parameters)
+    - 'MACD_12_26_9_12_26_9_lag1'
+    - 'MACDs_12_26_9_12_26_9_lag1'
+    - 'MACDh_12_26_9_12_26_9_lag1'
+    # Volume Context
+    - 'Volume_lag1'
+    - 'IsHighVolume_lag1'
+    # Trend/Filter Context
+    - 'IsTrendingUp_lag1'
+    # ORB Context
+    - 'ORB_Size_lag1'
+    - 'ORB_Size_Norm_ATR_50_lag1'
+    - 'Dist_from_ORB_Low_Norm_lag1'
+    - 'Dist_from_ORB_High_Norm_lag1'
+    # Price Location Context
+    - 'Close_vs_SMA_15_Norm_ATR_14_lag1'
+    - 'Close_vs_SMA_20_Norm_ATR_14_lag1'
+    # Volatility Context
+    - 'ATR_Ratio_14_50_lag1'
+    # Interaction Features (NEW - Lagged)
+    - 'Interaction_Vol_ADX_lag1'
+    - 'Interaction_RSI_DistORB_lag1'
+    # Time Context
+    - 'Hour_lag1'
+    - 'DayOfWeek_lag1'
+    - 'Time_Since_Open_lag1'
+    - 'Time_to_Close_lag1'
+    # Regime Context
+    - 'Regime'
+
+  probability_threshold: 0.55 # Adjust based on tuned model performance/calibration
+
+# --- Position Sizing ---
+position_sizing_params:
+  method: 'regime_confidence_simple'
+  confidence_threshold: 0.55 # Matches meta_model_params threshold
+  # Update based on your analysis of Regime Centers! Example:
+  # Regime 0: Med Vol | Regime 1: High Vol | Regime 2: Low Vol
+  regime_multipliers:
+    0: 2.0 # e.g., Full size
+    1: 1.0 # e.g., Half size
+    2: 0.0 # e.g., No trades
+
+# --- Backtesting / Simulation ---
+simulation_params:
+  commission_per_contract: 0.0
+  slippage_per_trade: 0.0

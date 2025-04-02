@@ -1,0 +1,14 @@
+# requirements.txt
+
+pandas
+numpy
+scikit-learn
+lightgbm
+pandas-ta
+joblib
+pyyaml
+tqdm
+matplotlib
+seaborn
+# openpyxl # Often needed by pandas for Excel I/O, good to include
+# ipykernel # Needed for running Jupyter notebooks
